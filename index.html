@@ -26,6 +26,8 @@
         .txt-out { color: var(--expense); font-weight: bold; }
         .del-btn { color: #e74c3c; background: none; width: auto; padding: 5px; font-size: 1.2rem; }
         #status-msg { text-align: center; color: var(--accent); font-size: 0.8rem; margin-bottom: 10px; font-weight: bold; }
+        /* Style Tambahan untuk Uang Bersih Bulan */
+        .net-month { border-top: 1px solid #ddd; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 1rem; }
     </style>
 </head>
 <body>
@@ -58,6 +60,7 @@
             <h4>Ringkasan Bulan Ini</h4>
             <div class="stat-row"><span>Total Masuk:</span> <span id="m-in" class="txt-in">0</span></div>
             <div class="stat-row"><span>Total Keluar:</span> <span id="m-out" class="txt-out">0</span></div>
+            <div class="stat-row net-month"><span>Total Uang Bersih:</span> <span id="m-net">0</span></div>
         </div>
     </div>
 
@@ -73,7 +76,6 @@
 </div>
 
 <script>
-    // URL Database kamu sudah saya pasang di sini
     const DB_URL = "https://laporan-keuangan-3f1f9-default-rtdb.asia-southeast1.firebasedatabase.app/transaksi";
     
     let allData = [];
@@ -89,7 +91,7 @@
             msg.innerText = "Terhubung ke Cloud";
             msg.style.color = "#27ae60";
         } catch (e) {
-            msg.innerText = "Gagal mengambil data! Periksa koneksi atau URL.";
+            msg.innerText = "Gagal mengambil data!";
             msg.style.color = "#e74c3c";
         }
     }
@@ -126,6 +128,7 @@
             if (item.date === selectedDate) {
                 if (item.type === 'masuk') fIn += item.amount; else fOut += item.amount;
             }
+            // Filter Bulan Ini
             if (itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear()) {
                 if (item.type === 'masuk') mIn += item.amount; else mOut += item.amount;
             }
@@ -135,11 +138,21 @@
                 <td><button class="del-btn" onclick="deleteData('${item.id}')">&times;</button></td>
             </tr>`;
         });
+
+        // Update UI Harian
         document.getElementById('f-in').innerText = fIn.toLocaleString();
         document.getElementById('f-out').innerText = fOut.toLocaleString();
         document.getElementById('f-net').innerText = (fIn - fOut).toLocaleString();
+
+        // Update UI Bulanan (Fitur Baru)
+        const mNet = mIn - mOut;
         document.getElementById('m-in').innerText = mIn.toLocaleString();
         document.getElementById('m-out').innerText = mOut.toLocaleString();
+        const netMonthEl = document.getElementById('m-net');
+        netMonthEl.innerText = mNet.toLocaleString();
+        
+        // Warna Otomatis untuk Uang Bersih Bulan
+        netMonthEl.style.color = mNet >= 0 ? "var(--accent)" : "var(--expense)";
     }
 
     window.onload = () => {
