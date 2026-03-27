@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Keuangan</title>
+    <style>
+        :root { --primary: #2c3e50; --income: #27ae60; --expense: #e74c3c; --accent: #3498db; --bg: #f4f7f6; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--primary); }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; margin-bottom: 15px; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+        .stat-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 0.95rem; }
+        .net-total { border-top: 2px dashed #eee; padding-top: 8px; font-weight: bold; }
+        .focus-card { border: 2px solid var(--accent); background: #f0f9ff; }
+        input, button { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 10px; }
+        button { cursor: pointer; border: none; font-weight: bold; color: white; transition: 0.2s; }
+        button:active { transform: scale(0.98); opacity: 0.8; }
+        .btn-in { background: var(--income); }
+        .btn-out { background: var(--expense); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        th { background: #f8f9fa; }
+        .txt-in { color: var(--income); font-weight: bold; }
+        .txt-out { color: var(--expense); font-weight: bold; }
+        .del-btn { color: #e74c3c; background: none; width: auto; padding: 5px; font-size: 1.2rem; }
+        #status-msg { text-align: center; color: var(--accent); font-size: 0.8rem; margin-bottom: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="text-align:center">📊 Laporan Keuangan</h2>
+    <div id="status-msg">Menghubungkan ke server...</div>
+
+    <div class="card focus-card">
+        <label><b>Pilih Tanggal Laporan:</b></label>
+        <input type="date" id="date-input" onchange="renderUI()">
+        <div style="margin-top:15px">
+            <div class="stat-row"><span>Pemasukan:</span> <span id="f-in" class="txt-in">0</span></div>
+            <div class="stat-row"><span>Pengeluaran:</span> <span id="f-out" class="txt-out">0</span></div>
+            <div class="stat-row net-total"><span>Uang Bersih:</span> <span id="f-net">0</span></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <input type="text" id="desc" placeholder="Keterangan">
+        <input type="number" id="amount" placeholder="Jumlah (Rp)">
+        <div class="btn-group">
+            <button class="btn-in" onclick="saveData('masuk')">PEMASUKAN (+)</button>
+            <button class="btn-out" onclick="saveData('keluar')">PENGELUARAN (-)</button>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="card">
+            <h4>Ringkasan Bulan Ini</h4>
+            <div class="stat-row"><span>Total Masuk:</span> <span id="m-in" class="txt-in">0</span></div>
+            <div class="stat-row"><span>Total Keluar:</span> <span id="m-out" class="txt-out">0</span></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h4>Riwayat Transaksi</h4>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead><tr><th>Tgl/Ket</th><th>Jumlah</th><th>Hapus</th></tr></thead>
+                <tbody id="history-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // URL Database kamu sudah saya pasang di sini
+    const DB_URL = "https://laporan-keuangan-3f1f9-default-rtdb.asia-southeast1.firebasedatabase.app/transaksi";
+    
+    let allData = [];
+
+    async function fetchData() {
+        const msg = document.getElementById('status-msg');
+        msg.innerText = "Sinkronisasi...";
+        try {
+            const res = await fetch(`${DB_URL}.json`);
+            const data = await res.json();
+            allData = data ? Object.keys(data).map(id => ({ ...data[id], id })) : [];
+            renderUI();
+            msg.innerText = "Terhubung ke Cloud";
+            msg.style.color = "#27ae60";
+        } catch (e) {
+            msg.innerText = "Gagal mengambil data! Periksa koneksi atau URL.";
+            msg.style.color = "#e74c3c";
+        }
+    }
+
+    async function saveData(type) {
+        const date = document.getElementById('date-input').value;
+        const desc = document.getElementById('desc').value;
+        const amount = parseInt(document.getElementById('amount').value);
+        if (!date || !desc || !amount) return alert("Isi semua data!");
+        try {
+            await fetch(`${DB_URL}.json`, { method: 'POST', body: JSON.stringify({ date, desc, amount, type }) });
+            document.getElementById('desc').value = '';
+            document.getElementById('amount').value = '';
+            fetchData();
+        } catch (e) { alert("Gagal menyimpan!"); }
+    }
+
+    async function deleteData(id) {
+        if (!confirm("Hapus data ini?")) return;
+        await fetch(`${DB_URL}/${id}.json`, { method: 'DELETE' });
+        fetchData();
+    }
+
+    function renderUI() {
+        const selectedDate = document.getElementById('date-input').value;
+        const list = document.getElementById('history-body');
+        const now = new Date();
+        list.innerHTML = '';
+        let fIn = 0, fOut = 0, mIn = 0, mOut = 0;
+
+        allData.sort((a, b) => new Date(b.date) - new Date(a.date));
+        allData.forEach(item => {
+            const itemDate = new Date(item.date);
+            if (item.date === selectedDate) {
+                if (item.type === 'masuk') fIn += item.amount; else fOut += item.amount;
+            }
+            if (itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear()) {
+                if (item.type === 'masuk') mIn += item.amount; else mOut += item.amount;
+            }
+            list.innerHTML += `<tr>
+                <td><b>${item.date}</b><br>${item.desc}</td>
+                <td class="${item.type === 'masuk' ? 'txt-in' : 'txt-out'}">${item.amount.toLocaleString()}</td>
+                <td><button class="del-btn" onclick="deleteData('${item.id}')">&times;</button></td>
+            </tr>`;
+        });
+        document.getElementById('f-in').innerText = fIn.toLocaleString();
+        document.getElementById('f-out').innerText = fOut.toLocaleString();
+        document.getElementById('f-net').innerText = (fIn - fOut).toLocaleString();
+        document.getElementById('m-in').innerText = mIn.toLocaleString();
+        document.getElementById('m-out').innerText = mOut.toLocaleString();
+    }
+
+    window.onload = () => {
+        document.getElementById('date-input').value = new Date().toISOString().split('T')[0];
+        fetchData();
+    };
+</script>
+</body>
+</html>
