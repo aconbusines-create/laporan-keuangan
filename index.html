@@ -3,96 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Keuangan</title>
+    <title>Laporan Keuangan Pro</title>
     <style>
         :root { --primary: #2c3e50; --income: #27ae60; --expense: #e74c3c; --accent: #3498db; --bg: #f4f7f6; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--primary); }
-        .container { max-width: 800px; margin: auto; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--primary); overflow-x: hidden; padding-bottom: 80px; }
+        
+        /* Floating Navbar Bawah */
+        .bottom-nav { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; }
+        .menu-circle { width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; border: 3px solid white; }
+
+        /* Sidebar (Muncul dari Bawah) */
+        .sidebar { position: fixed; bottom: -100%; left: 0; width: 100%; background: white; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); z-index: 250; transition: 0.4s; border-radius: 20px 20px 0 0; padding-bottom: 20px; }
+        .sidebar.active { bottom: 0; }
+        .sidebar-header { padding: 20px; text-align: center; font-weight: bold; border-bottom: 1px solid #eee; color: var(--accent); }
+        .sidebar-item { padding: 15px 25px; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; gap: 15px; font-size: 1.1rem; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 240; display: none; }
+        .overlay.active { display: block; }
+
+        /* Content & Cards */
+        .container { max-width: 800px; margin: auto; padding: 15px; }
+        .page { display: none; animation: fadeIn 0.3s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; margin-bottom: 15px; }
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
-        .stat-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 0.95rem; }
-        .net-total { border-top: 2px dashed #eee; padding-top: 8px; font-weight: bold; }
-        .focus-card { border: 2px solid var(--accent); background: #f0f9ff; }
+        .stat-row { display: flex; justify-content: space-between; margin: 8px 0; }
+        .net-total { border-top: 2px dashed #eee; padding-top: 8px; font-weight: bold; margin-top: 10px; }
+        
         input, button { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
         .btn-group { display: flex; gap: 10px; }
-        button { cursor: pointer; border: none; font-weight: bold; color: white; transition: 0.2s; }
-        button:active { transform: scale(0.98); opacity: 0.8; }
+        button { cursor: pointer; border: none; font-weight: bold; color: white; }
         .btn-in { background: var(--income); }
         .btn-out { background: var(--expense); }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.85rem; }
         th { background: #f8f9fa; }
         .txt-in { color: var(--income); font-weight: bold; }
         .txt-out { color: var(--expense); font-weight: bold; }
-        .del-btn { color: #e74c3c; background: none; width: auto; padding: 5px; font-size: 1.2rem; }
-        #status-msg { text-align: center; color: var(--accent); font-size: 0.8rem; margin-bottom: 10px; font-weight: bold; }
-        /* Style Tambahan untuk Uang Bersih Bulan */
-        .net-month { border-top: 1px solid #ddd; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 1rem; }
+        .del-btn { color: #e74c3c; background: none; width: auto; font-size: 1.2rem; }
+        #status-msg { text-align: center; color: var(--accent); font-size: 0.8rem; padding: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 style="text-align:center">📊 Laporan Keuangan</h2>
-    <div id="status-msg">Menghubungkan ke server...</div>
+<div class="bottom-nav">
+    <div class="menu-circle" onclick="toggleMenu()">☰</div>
+</div>
 
-    <div class="card focus-card">
-        <label><b>Pilih Tanggal Laporan:</b></label>
-        <input type="date" id="date-input" onchange="renderUI()">
-        <div style="margin-top:15px">
-            <div class="stat-row"><span>Pemasukan:</span> <span id="f-in" class="txt-in">0</span></div>
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">NAVIGASI LAPORAN</div>
+    <div class="sidebar-item" onclick="showPage('home')">🏠 Home (Input)</div>
+    <div class="sidebar-item" onclick="showPage('minggu')">📅 Minggu Ini</div>
+    <div class="sidebar-item" onclick="showPage('bulan')">📊 Bulan Ini</div>
+    <div class="sidebar-item" onclick="showPage('tahun')">🏢 Tahun Ini</div>
+    <div class="sidebar-item" onclick="showPage('riwayat')">📜 Semua Riwayat</div>
+</div>
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<div id="status-msg">Menghubungkan ke Cloud...</div>
+
+<div class="container">
+    
+    <div id="page-home" class="page active">
+        <h2 style="text-align:center">📊 Laporan Harian</h2>
+        <div class="card" style="border-left: 5px solid var(--accent); background: #f0f9ff;">
+            <label><b>Pilih Tanggal:</b></label>
+            <input type="date" id="date-input" onchange="renderUI()">
+            <div class="stat-row" style="margin-top:10px"><span>Pemasukan:</span> <span id="f-in" class="txt-in">0</span></div>
             <div class="stat-row"><span>Pengeluaran:</span> <span id="f-out" class="txt-out">0</span></div>
             <div class="stat-row net-total"><span>Uang Bersih:</span> <span id="f-net">0</span></div>
         </div>
-    </div>
 
-    <div class="card">
-        <input type="text" id="desc" placeholder="Keterangan">
-        <input type="number" id="amount" placeholder="Jumlah (Rp)">
-        <div class="btn-group">
-            <button class="btn-in" onclick="saveData('masuk')">PEMASUKAN (+)</button>
-            <button class="btn-out" onclick="saveData('keluar')">PENGELUARAN (-)</button>
+        <div class="card">
+            <input type="text" id="desc" placeholder="Keterangan">
+            <input type="number" id="amount" placeholder="Jumlah (Rp)">
+            <div class="btn-group">
+                <button class="btn-in" onclick="saveData('masuk')">MASUK (+)</button>
+                <button class="btn-out" onclick="saveData('keluar')">KELUAR (-)</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h4>Riwayat Tanggal Terpilih</h4>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead><tr><th>Keterangan</th><th>Jumlah</th><th>Hapus</th></tr></thead>
+                    <tbody id="home-history-body"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="dashboard">
+    <div id="page-minggu" class="page">
+        <h3>🗓️ Ringkasan 7 Hari Terakhir</h3>
         <div class="card">
-            <h4>Ringkasan Bulan Ini</h4>
+            <div class="stat-row"><span>Total Masuk:</span> <span id="w-in" class="txt-in">0</span></div>
+            <div class="stat-row"><span>Total Keluar:</span> <span id="w-out" class="txt-out">0</span></div>
+            <div class="stat-row net-total"><span>Saldo Mingguan:</span> <span id="w-net">0</span></div>
+        </div>
+    </div>
+
+    <div id="page-bulan" class="page">
+        <h3>📊 Ringkasan Bulan Ini</h3>
+        <div class="card">
             <div class="stat-row"><span>Total Masuk:</span> <span id="m-in" class="txt-in">0</span></div>
             <div class="stat-row"><span>Total Keluar:</span> <span id="m-out" class="txt-out">0</span></div>
-            <div class="stat-row net-month"><span>Total Uang Bersih:</span> <span id="m-net">0</span></div>
+            <div class="stat-row net-total"><span>Saldo Bulanan:</span> <span id="m-net">0</span></div>
         </div>
     </div>
 
-    <div class="card">
-        <h4>Riwayat Transaksi</h4>
-        <div style="overflow-x: auto;">
-            <table>
+    <div id="page-tahun" class="page">
+        <h3>🏢 Ringkasan Tahun Ini</h3>
+        <div class="card">
+            <div class="stat-row"><span>Total Masuk:</span> <span id="y-in" class="txt-in">0</span></div>
+            <div class="stat-row"><span>Total Keluar:</span> <span id="y-out" class="txt-out">0</span></div>
+            <div class="stat-row net-total"><span>Saldo Tahunan:</span> <span id="y-net">0</span></div>
+        </div>
+    </div>
+
+    <div id="page-riwayat" class="page">
+        <h3>📜 Semua Riwayat Transaksi</h3>
+        <div class="card" style="padding:0">
+            <table style="margin-top:0">
                 <thead><tr><th>Tgl/Ket</th><th>Jumlah</th><th>Hapus</th></tr></thead>
-                <tbody id="history-body"></tbody>
+                <tbody id="all-history-body"></tbody>
             </table>
         </div>
     </div>
+
 </div>
 
 <script>
     const DB_URL = "https://laporan-keuangan-3f1f9-default-rtdb.asia-southeast1.firebasedatabase.app/transaksi";
-    
     let allData = [];
 
+    function toggleMenu() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+
+    function showPage(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + pageId).classList.add('active');
+        toggleMenu();
+        window.scrollTo(0,0);
+        renderUI();
+    }
+
     async function fetchData() {
-        const msg = document.getElementById('status-msg');
-        msg.innerText = "Sinkronisasi...";
         try {
             const res = await fetch(`${DB_URL}.json`);
             const data = await res.json();
             allData = data ? Object.keys(data).map(id => ({ ...data[id], id })) : [];
             renderUI();
-            msg.innerText = "Terhubung ke Cloud";
-            msg.style.color = "#27ae60";
+            document.getElementById('status-msg').innerText = "✓ Data Terupdate";
+            document.getElementById('status-msg').style.color = "#27ae60";
         } catch (e) {
-            msg.innerText = "Gagal mengambil data!";
-            msg.style.color = "#e74c3c";
+            document.getElementById('status-msg').innerText = "⚠ Koneksi Error";
         }
     }
 
@@ -106,7 +174,7 @@
             document.getElementById('desc').value = '';
             document.getElementById('amount').value = '';
             fetchData();
-        } catch (e) { alert("Gagal menyimpan!"); }
+        } catch (e) { alert("Gagal Simpan!"); }
     }
 
     async function deleteData(id) {
@@ -117,42 +185,60 @@
 
     function renderUI() {
         const selectedDate = document.getElementById('date-input').value;
-        const list = document.getElementById('history-body');
+        const homeList = document.getElementById('home-history-body');
+        const allList = document.getElementById('all-history-body');
         const now = new Date();
-        list.innerHTML = '';
-        let fIn = 0, fOut = 0, mIn = 0, mOut = 0;
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(now.getDate() - 7);
+
+        homeList.innerHTML = '';
+        allList.innerHTML = '';
+        
+        let fIn = 0, fOut = 0; // Harian
+        let wIn = 0, wOut = 0, mIn = 0, mOut = 0, yIn = 0, yOut = 0;
 
         allData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
         allData.forEach(item => {
-            const itemDate = new Date(item.date);
-            if (item.date === selectedDate) {
-                if (item.type === 'masuk') fIn += item.amount; else fOut += item.amount;
-            }
-            // Filter Bulan Ini
-            if (itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear()) {
-                if (item.type === 'masuk') mIn += item.amount; else mOut += item.amount;
-            }
-            list.innerHTML += `<tr>
-                <td><b>${item.date}</b><br>${item.desc}</td>
+            const d = new Date(item.date);
+            const row = `<tr>
+                <td><small>${item.date}</small><br><b>${item.desc}</b></td>
                 <td class="${item.type === 'masuk' ? 'txt-in' : 'txt-out'}">${item.amount.toLocaleString()}</td>
                 <td><button class="del-btn" onclick="deleteData('${item.id}')">&times;</button></td>
             </tr>`;
+
+            // Filter Harian (Hanya Tanggal yang dipilih)
+            if (item.date === selectedDate) {
+                if (item.type === 'masuk') fIn += item.amount; else fOut += item.amount;
+                homeList.innerHTML += `<tr>
+                    <td><b>${item.desc}</b></td>
+                    <td class="${item.type === 'masuk' ? 'txt-in' : 'txt-out'}">${item.amount.toLocaleString()}</td>
+                    <td><button class="del-btn" onclick="deleteData('${item.id}')">&times;</button></td>
+                </tr>`;
+            }
+
+            // Hitung Ringkasan (Minggu, Bulan, Tahun)
+            if (d >= sevenDaysAgo && d <= now) { if(item.type==='masuk') wIn+=item.amount; else wOut+=item.amount; }
+            if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) { if(item.type==='masuk') mIn+=item.amount; else mOut+=item.amount; }
+            if (d.getFullYear() === now.getFullYear()) { if(item.type==='masuk') yIn+=item.amount; else yOut+=item.amount; }
+
+            // Masuk ke Semua Riwayat
+            allList.innerHTML += row;
         });
 
-        // Update UI Harian
         document.getElementById('f-in').innerText = fIn.toLocaleString();
         document.getElementById('f-out').innerText = fOut.toLocaleString();
         document.getElementById('f-net').innerText = (fIn - fOut).toLocaleString();
-
-        // Update UI Bulanan (Fitur Baru)
-        const mNet = mIn - mOut;
+        document.getElementById('w-net').innerText = (wIn - wOut).toLocaleString();
         document.getElementById('m-in').innerText = mIn.toLocaleString();
         document.getElementById('m-out').innerText = mOut.toLocaleString();
-        const netMonthEl = document.getElementById('m-net');
-        netMonthEl.innerText = mNet.toLocaleString();
-        
-        // Warna Otomatis untuk Uang Bersih Bulan
-        netMonthEl.style.color = mNet >= 0 ? "var(--accent)" : "var(--expense)";
+        document.getElementById('m-net').innerText = (mIn - mOut).toLocaleString();
+        document.getElementById('y-net').innerText = (yIn - yOut).toLocaleString();
+        // Update detail lainnya
+        document.getElementById('w-in').innerText = wIn.toLocaleString();
+        document.getElementById('w-out').innerText = wOut.toLocaleString();
+        document.getElementById('y-in').innerText = yIn.toLocaleString();
+        document.getElementById('y-out').innerText = yOut.toLocaleString();
     }
 
     window.onload = () => {
@@ -161,4 +247,5 @@
     };
 </script>
 </body>
-</html>
+                </html>
+    
